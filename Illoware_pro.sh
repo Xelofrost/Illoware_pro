@@ -134,11 +134,8 @@ check_cloudflare() {
   for r in "${CF_RANGES[@]}"; do
     if ipcalc -nb "$ip" "$r" 2>/dev/null | grep -q NETWORK; then
       echo "$1 redirige a IP $ip (Cloudflare)" > "$BASE/raw/cloudflare.txt"
-      return 0
-    fi
-  done
-  return 1
-}
+      return
+  fi; done; }
 
 # ---------------------------
 # Fases de reconocimiento
@@ -150,14 +147,14 @@ collect_dns() {
   done
   dig +short TXT "_dmarc.$DOMAIN" | tee "$BASE/raw/DMARC"
   log "[DNSRECON] Brute-force..."
-  # Eliminar uso de -o, redirigir salida manualmente
-  dnsrecon -d "$DOMAIN" -t brt > "$BASE/raw/dnsrecon.txt"
+  # Uso de opción -b para brute-force según nueva versión
+dnsrecon -d "$DOMAIN" -b > "$BASE/raw/dnsrecon.txt"
 }
 
 run_whois() {
   log "[WHOIS] Ejecutando..."
   whois "$DOMAIN" > "$BASE/raw/whois"
-  awk '/inetnum/ {print \$2"->"\$3}' "$BASE/raw/whois" | sort -u > "$BASE/clean/rangos"
+  awk '/inetnum/ {print \\$2"->"\\$3}' "$BASE/raw/whois" | sort -u > "$BASE/clean/rangos"
 }
 
 run_nmap() {
