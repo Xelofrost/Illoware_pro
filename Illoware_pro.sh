@@ -153,8 +153,11 @@ dnsrecon -d "$DOMAIN" -b > "$BASE/raw/dnsrecon.txt"
 
 run_whois() {
   log "[WHOIS] Ejecutando..."
-  whois "$DOMAIN" > "$BASE/raw/whois"
-  awk '/inetnum/ {print \\$2"->"\\$3}' "$BASE/raw/whois" | sort -u > "$BASE/clean/rangos"
+  # Extraer dominio principal (eliminar subdominios como 'www')
+  MAIN_DOMAIN=$(echo "$DOMAIN" | sed -E 's/^[^.]*\.//')  # Ej: www.figma.com -> figma.com
+  whois "$MAIN_DOMAIN" > "$BASE/raw/whois"
+  # Corregir AWK (sin backslashes y buscar patrones ARIN/RIPE)
+  awk '/inetnum|NetRange/ {print $2"->"$3}' "$BASE/raw/whois" | sort -u > "$BASE/clean/rangos"
 }
 
 run_nmap() {
