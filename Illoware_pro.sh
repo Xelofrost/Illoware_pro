@@ -174,7 +174,7 @@ gather_subdomains() {
   amass enum -passive -d "$DOMAIN" -silent >> "$BASE/raw/subs.txt"
   sort -u "$BASE/raw/subs.txt" | grep "\\.$DOMAIN\$" > "$BASE/clean/subs_base.txt"
 
-  dnsgen "$BASE/clean/subs_base.txt" -o "$BASE/raw/subs_dnsgen.txt"
+  shuffledns "$BASE/clean/subs_base.txt" -o "$BASE/raw/subs_dnsgen.txt"
   grep "\\.$DOMAIN\$" "$BASE/raw/subs_dnsgen.txt" | sort -u > "$BASE/clean/subs_gen.txt"
 
   cat "$BASE/clean/subs_base.txt" "$BASE/clean/subs_gen.txt" | sort -u > "$BASE/clean/subs_all.txt"
