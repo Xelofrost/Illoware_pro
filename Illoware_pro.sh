@@ -150,13 +150,14 @@ collect_dns() {
   done
   dig +short TXT "_dmarc.$DOMAIN" | tee "$BASE/raw/DMARC"
   log "[DNSRECON] Brute-force..."
-  dnsrecon -d "$DOMAIN" -t brt -o "$BASE/raw/dnsrecon.txt"
+  # Eliminar uso de -o, redirigir salida manualmente
+  dnsrecon -d "$DOMAIN" -t brt > "$BASE/raw/dnsrecon.txt"
 }
 
 run_whois() {
   log "[WHOIS] Ejecutando..."
   whois "$DOMAIN" > "$BASE/raw/whois"
-  awk '/inetnum/ {print \\$2"->"\\$3}' "$BASE/raw/whois" | sort -u > "$BASE/clean/rangos"
+  awk '/inetnum/ {print \$2"->"\$3}' "$BASE/raw/whois" | sort -u > "$BASE/clean/rangos"
 }
 
 run_nmap() {
@@ -207,10 +208,11 @@ discover_endpoints() {
   cat "$BASE/raw/wayback.txt" "$BASE/raw/gau.txt" > "$BASE/raw/all_urls.txt"
 
   log "[FUZZ] Gobuster..."
-  for url in $(cat "$BASE/raw/all_urls.txt"); do
-    [[ "$url" =~ ^https?:// ]] && host=$(echo "$url" | awk -F/ '{print \\$3}') || continue
+  while read -r url; do
+    [[ "$url" =~ ^https?:// ]] || continue
+    host=$(echo "$url" | awk -F/ '{print \$3}')
     gobuster dir -u "$url" -w /usr/share/wordlists/directory-list-2.3-medium.txt -q -o "$BASE/raw/gobuster_${host}.txt" &
-  done
+  done < "$BASE/raw/all_urls.txt"
   wait
 }
 
@@ -223,7 +225,8 @@ detect_vulns() {
   log "[VULN] Nuclei CVEs + misconfigs..."
   nuclei -l "$BASE/clean/live.txt" -t cves/ -t security-misconfiguration/ -silent > "$BASE/clean/nuclei.txt"
   log "[NIKTO] Escaneo web..."
-  nikto -host "$DOMAIN" -output "$BASE/raw/nikto.txt"
+  nikto -h "$DOMAIN" -o "$BASE
+/raw/nikto.txt"
 }
 
 gf_patterns() {
