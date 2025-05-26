@@ -29,7 +29,7 @@ GO_PKGS=(
   github.com/ffuf/ffuf/v2@latest
   github.com/lc/gau/v2/cmd/gau@latest
   github.com/tomnomnom/waybackurls@latest
-  github.com/projectdiscovery/dnsgen/cmd/dnsgen@latest
+  github.com/projectdiscovery/dnsgen@latest
 )
 APT_PKG=(curl git jq wget figlet dnsutils whois nmap python3 python3-pip gobuster dnsrecon nikto whatweb)
 NPM_PKG=(markmap-cli)
