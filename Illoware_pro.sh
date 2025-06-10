@@ -169,16 +169,55 @@ run_nmap() {
 }
 
 gather_subdomains() {
-  log "[SUB] Subfinder + Amass + DNSGen..."
-  subfinder -d "$DOMAIN" -silent >> "$BASE/raw/subs.txt"
-  amass enum -passive -d "$DOMAIN" -silent >> "$BASE/raw/subs.txt"
-  sort -u "$BASE/raw/subs.txt" | grep "\\.$DOMAIN\$" > "$BASE/clean/subs_base.txt"
+  log "[SUB] Iniciando recolección de subdominios para $DOMAIN"
 
-  shuffledns "$BASE/clean/subs_base.txt" -o "$BASE/raw/subs_dnsgen.txt"
-  grep "\\.$DOMAIN\$" "$BASE/raw/subs_dnsgen.txt" | sort -u > "$BASE/clean/subs_gen.txt"
+  # Spinner
+  spinner() {
+    local pid=$1
+    local chars="/—\|"
+    while kill -0 "$pid" 2>/dev/null; do
+      for (( i=0; i<${#chars}; i++ )); do
+        printf "\r[%c] %s en curso..." "${chars:$i:1}" "$2"
+        sleep 0.1
+      done
+    done
+    printf "\r    %s completado.    \n" "$2"
+  }
 
-  cat "$BASE/clean/subs_base.txt" "$BASE/clean/subs_gen.txt" | sort -u > "$BASE/clean/subs_all.txt"
+  mkdir -p "$BASE/raw/subs_temp"
+  
+  # 1) subfinder
+  echo "$(date +%H:%M:%S)  → subfinder (timeout 120s)"
+  timeout 120s subfinder -d "$DOMAIN" -silent > "$BASE/raw/subs_temp/subfinder.txt" &
+  spinner $! "subfinder"
+  echo "  → encontrados $(wc -l < "$BASE/raw/subs_temp/subfinder.txt") hosts"
+
+  # 2) amass
+  echo "$(date +%H:%M:%S)  → amass enum (timeout 180s)"
+  timeout 180s amass enum -passive -d "$DOMAIN" -silent > "$BASE/raw/subs_temp/amass.txt" &
+  spinner $! "amass"
+  echo "  → encontrados $(wc -l < "$BASE/raw/subs_temp/amass.txt") hosts"
+
+  # 3) combinación y limpieza inicial
+  cat "$BASE/raw/subs_temp/"*.txt | sort -u | grep "\\.$DOMAIN\$" \
+    > "$BASE/clean/subs_base.txt"
+  echo "  → subs_base: $(wc -l < "$BASE/clean/subs_base.txt")"
+
+  # 4) shuffledns
+  echo "$(date +%H:%M:%S)  → shuffledns (timeout 120s)"
+  timeout 120s shuffledns "$BASE/clean/subs_base.txt" \
+    -r "$RESOLVERS_SOURCE" -o "$BASE/raw/subs_temp/dnsgen.txt" &
+  spinner $! "shuffledns"
+  grep "\\.$DOMAIN\$" "$BASE/raw/subs_temp/dnsgen.txt" | sort -u \
+    > "$BASE/clean/subs_gen.txt"
+  echo "  → subs_gen: $(wc -l < "$BASE/clean/subs_gen.txt")"
+
+  # 5) lista final
+  cat "$BASE/clean/subs_base.txt" "$BASE/clean/subs_gen.txt" \
+    | sort -u > "$BASE/clean/subs_all.txt"
+  echo "  → subs_all (total): $(wc -l < "$BASE/clean/subs_all.txt")"
 }
+
 
 resolve_and_filter() {
   log "[RES] dnsx + httpx..."
